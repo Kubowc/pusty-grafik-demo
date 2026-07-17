@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f6f1eb" />
+  <title>Pusty Grafik — asystent wolnych terminów</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#" aria-label="Pusty Grafik — strona główna">
+        <span class="brand-mark">PG</span>
+        <span><strong>Pusty Grafik</strong><small>Studio Lune</small></span>
+      </a>
+
+      <nav class="main-nav" aria-label="Główna nawigacja">
+        <button class="nav-item active" data-view="today"><span class="nav-icon">⌂</span>Dzisiaj</button>
+        <button class="nav-item" data-view="clients"><span class="nav-icon">♙</span>Klientki</button>
+        <button class="nav-item" data-view="results"><span class="nav-icon">↗</span>Wyniki</button>
+        <button class="nav-item" data-view="settings"><span class="nav-icon">⚙</span>Ustawienia</button>
+      </nav>
+
+      <div class="privacy-card">
+        <span class="privacy-icon">✓</span>
+        <div><strong>Publiczna wersja demo</strong><p>Tylko fikcyjne dane. Zmiany zostają w tej przeglądarce.</p></div>
+      </div>
+      <div class="sidebar-footer">
+        <button class="text-button" id="importButton">Dane z Booksy</button>
+        <button class="avatar" title="Profil salonu">ML</button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <section class="view active" id="view-today">
+        <div class="demo-banner"><span>DEMO</span> Wszystkie pokazane klientki, numery i wizyty są fikcyjne.</div>
+        <header class="page-header">
+          <div>
+            <p class="eyebrow" id="todayDate">ŚRODA, 15 LIPCA</p>
+            <h1>Dzień dobry, Marta</h1>
+            <p class="subtitle">Masz dziś kilka dobrych okazji, żeby wypełnić grafik.</p>
+          </div>
+          <button class="button secondary" id="openImport"><span>↑</span> Dodaj dane z Booksy</button>
+        </header>
+
+        <div class="summary-grid" id="summaryGrid"></div>
+
+        <div class="section-heading">
+          <div><h2>Najlepsze okazje</h2><p>Ułożone według szansy na rezerwację i wartości terminu.</p></div>
+          <div class="segmented" aria-label="Zakres terminów">
+            <button class="active" data-range="3">3 dni</button>
+            <button data-range="7">7 dni</button>
+          </div>
+        </div>
+
+        <div class="opportunities-layout">
+          <div class="opportunity-list" id="opportunityList"></div>
+          <aside class="draft-panel" id="draftPanel"></aside>
+        </div>
+
+        <div class="section-heading queue-heading">
+          <div><h2>Do sprawdzenia</h2><p>Wiadomości czekające na Twoją decyzję.</p></div>
+          <span class="quiet-badge" id="queueCount">0 wiadomości</span>
+        </div>
+        <div class="queue" id="messageQueue"></div>
+      </section>
+
+      <section class="view" id="view-clients">
+        <header class="page-header compact">
+          <div><p class="eyebrow">BAZA SALONU</p><h1>Klientki</h1><p class="subtitle">Kto jest gotowy na kolejną wizytę?</p></div>
+          <button class="button primary" id="clientsImport">+ Dodaj dane z Booksy</button>
+        </header>
+        <div class="client-toolbar">
+          <label class="search-box"><span>⌕</span><input id="clientSearch" type="search" placeholder="Szukaj po imieniu lub usłudze" /></label>
+          <select id="clientFilter" aria-label="Filtr klientek">
+            <option value="all">Wszystkie klientki</option>
+            <option value="ready">Gotowe na wizytę</option>
+            <option value="consent">Ze zgodą na kontakt</option>
+          </select>
+        </div>
+        <div class="table-card">
+          <table>
+            <thead><tr><th>Klientka</th><th>Ostatnia usługa</th><th>Ostatnia wizyta</th><th>Kolejna wizyta</th><th>Status</th></tr></thead>
+            <tbody id="clientTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="view" id="view-results">
+        <header class="page-header compact">
+          <div><p class="eyebrow">OSTATNIE 30 DNI</p><h1>Wyniki</h1><p class="subtitle">Ile wizyt i przychodu udało się odzyskać?</p></div>
+          <button class="button secondary" id="exportResults">Pobierz raport</button>
+        </header>
+        <div class="results-grid" id="resultsSummary"></div>
+        <div class="chart-card">
+          <div class="chart-header"><div><h2>Odzyskany przychód</h2><p>Wyniki oznaczone po wysłaniu wiadomości</p></div><strong id="chartTotal"></strong></div>
+          <div class="bar-chart" id="barChart" aria-label="Wykres odzyskanego przychodu"></div>
+        </div>
+        <div class="section-heading"><div><h2>Historia kontaktu</h2><p>Każdą odpowiedź możesz poprawić jednym kliknięciem.</p></div></div>
+        <div class="history-list" id="historyList"></div>
+      </section>
+
+      <section class="view" id="view-settings">
+        <header class="page-header compact">
+          <div><p class="eyebrow">KONFIGURACJA</p><h1>Ustawienia</h1><p class="subtitle">Dopasuj propozycje do sposobu pracy salonu.</p></div>
+        </header>
+        <div class="settings-layout">
+          <form class="settings-card" id="settingsForm">
+            <h2>Profil salonu</h2>
+            <label>Nazwa salonu<input name="salonName" value="Studio Lune" /></label>
+            <label>Imię właścicielki<input name="ownerName" value="Marta" /></label>
+            <label>Ton wiadomości<select name="tone"><option value="warm">Ciepły i naturalny</option><option value="short">Krótki i konkretny</option></select></label>
+            <label>Maksymalny rabat<div class="input-suffix"><input name="discount" type="number" min="0" max="50" value="10" /><span>%</span></div></label>
+            <label class="toggle-row"><span><strong>Tylko klientki ze zgodą</strong><small>Nie proponuj kontaktu bez zapisanej zgody.</small></span><input name="consentOnly" type="checkbox" checked /></label>
+            <button class="button primary" type="submit">Zapisz ustawienia</button>
+          </form>
+          <div class="settings-card">
+            <h2>Dane i prywatność</h2>
+            <div class="data-stat"><span>Klientki</span><strong id="settingsClientCount">0</strong></div>
+            <div class="data-stat"><span>Historia kontaktu</span><strong id="settingsHistoryCount">0</strong></div>
+            <button class="button secondary wide" id="exportBackup">Pobierz kopię danych</button>
+            <button class="danger-link" id="resetDemo">Przywróć dane demonstracyjne</button>
+            <p class="privacy-note">Nie dodawaj informacji o zdrowiu, alergiach ani zdjęć zabiegów. Do znalezienia właściwego terminu wystarczą dane kontaktowe i historia usług.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="importModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="importTitle">
+      <button class="modal-close" aria-label="Zamknij">×</button>
+      <section class="import-step active" data-import-step="start">
+        <span class="booksy-badge">B</span>
+        <p class="step-label">DANE SALONU</p>
+        <h2 id="importTitle">Dodaj dane z Booksy</h2>
+        <p>Dzięki historii wizyt znajdziemy klientki, którym może zbliżać się termin kolejnej rezerwacji.</p>
+        <div class="choice-stack">
+          <button class="choice-button primary-choice" id="haveBooksyFiles"><span class="choice-icon">↑</span><span><strong>Mam już pliki z Booksy</strong><small>Wybierz pliki dokładnie w takiej formie, w jakiej je otrzymałaś.</small></span><b>→</b></button>
+          <button class="choice-button" id="needBooksyHelp"><span class="choice-icon">?</span><span><strong>Jak uzyskać swoje dane?</strong><small>Pokażemy Ci prostą instrukcję i gotową wiadomość.</small></span><b>→</b></button>
+        </div>
+        <button class="demo-link close-import">Na razie zostań przy przykładowym salonie</button>
+        <p class="local-note"><span>✓</span> Dane zostają na tym urządzeniu i nic nie jest wysyłane automatycznie.</p>
+      </section>
+
+      <section class="import-step" data-import-step="help">
+        <button class="step-back" data-back-to="start">← Wróć</button>
+        <p class="step-label">KROK 1 Z 2</p>
+        <h2>Poproś Booksy o swoje dane</h2>
+        <p>Na potrzeby pierwszego uruchomienia poproś o listę klientek, historię wizyt i listę usług. Nie musisz później niczego poprawiać w otrzymanych plikach.</p>
+        <div class="instruction-list">
+          <div><span>1</span><p><strong>Skontaktuj się z pomocą Booksy</strong><small>Najlepiej z adresu właścicielki konta salonu.</small></p></div>
+          <div><span>2</span><p><strong>Poproś o eksport danych</strong><small>Skopiuj i wyślij przygotowaną wiadomość poniżej.</small></p></div>
+          <div><span>3</span><p><strong>Wróć tutaj z otrzymanymi plikami</strong><small>Resztą zajmie się Pusty Grafik.</small></p></div>
+        </div>
+        <div class="request-copy"><p id="booksyRequest">Dzień dobry, proszę o przygotowanie eksportu danych z mojego konta Booksy: listy klientów wraz z danymi kontaktowymi, historii rezerwacji i wizyt oraz listy usług. Pozdrawiam</p><button id="copyBooksyRequest">Kopiuj wiadomość</button></div>
+        <button class="button primary wide" id="continueToFiles">Mam już pliki — przejdź dalej</button>
+        <p class="pilot-note">Pierwszy prawdziwy eksport sprawdzimy wspólnie, aby poprawnie dopasować go do Twojego konta.</p>
+      </section>
+
+      <section class="import-step" data-import-step="files">
+        <button class="step-back" data-back-to="start">← Wróć</button>
+        <p class="step-label">KROK 2 Z 2</p>
+        <h2>Dodaj pliki otrzymane z Booksy</h2>
+        <p>Nie otwieraj ich i niczego nie zmieniaj. Wybierz wszystkie pliki, które dotyczą klientek, wizyt lub usług.</p>
+        <label class="dropzone" for="csvFile"><span class="upload-cloud">↑</span><strong>Wybierz pliki z Booksy</strong><span>Możesz dodać kilka plików jednocześnie</span><input id="csvFile" type="file" accept=".csv,.xlsx,.xls,.zip,text/csv" multiple /></label>
+        <div class="safe-file-note"><span>✓</span><p><strong>Nie musisz znać rodzaju pliku</strong><small>Sprawdzimy go i wyjaśnimy ewentualny problem zwykłym językiem.</small></p></div>
+        <div class="import-status" id="importStatus"></div>
+        <button class="demo-link" id="previewImportSuccess">Pokaż przykładowy wynik dodania danych →</button>
+        <span class="demo-separator">lub</span>
+        <button class="demo-link close-import">Wróć do przykładowych danych</button>
+      </section>
+
+      <section class="import-step success-step" data-import-step="success">
+        <span class="success-mark">✓</span>
+        <p class="step-label">GOTOWE</p>
+        <h2>Dane są przygotowane</h2>
+        <p>Pusty Grafik może już szukać najlepszych okazji do wypełnienia wolnych terminów.</p>
+        <div class="found-grid">
+          <div><strong id="foundClients">0</strong><span>klientek</span></div>
+          <div><strong id="foundServices">0</strong><span>usług</span></div>
+          <div><strong id="foundReady">0</strong><span>gotowych na wizytę</span></div>
+        </div>
+        <div class="success-note">Klientki bez zapisanej zgody nie będą proponowane do kontaktu.</div>
+        <button class="button primary wide close-import">Pokaż najlepsze okazje</button>
+      </section>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
