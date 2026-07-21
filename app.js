@@ -199,7 +199,7 @@
     const query = ($('#visitSearch')?.value || '').toLowerCase();
     const visits = [...state.visits].sort((a, b) => b.date.localeCompare(a.date)).filter(visit => { const client = getClient(visit.clientId); const service = getService(visit.serviceId); return `${client?.name} ${service.name}`.toLowerCase().includes(query); });
     $('#visitList').innerHTML = visits.length ? visits.map(visit => { const client = getClient(visit.clientId); const service = getService(visit.serviceId); const product = getProduct(visit.productId); const totals = visitTotals(visit); return `<article class="visit-card"><div class="visit-main"><span class="initials">${initials(client.name)}</span><div><strong>${escapeHtml(client.name)}</strong><small>${formatDate(visit.date)} · ${escapeHtml(service.name)}</small></div></div><div class="visit-detail"><span>Preparat<small>${escapeHtml(product.name)}${visit.productAmount ? ` · ${visit.productAmount} ${product.unit}` : ''}</small></span><span>Wpłata przy wizycie<strong>${money.format(totals.paidAtVisit)}</strong></span><span>Wartość zabiegu<strong>${money.format(totals.serviceValue)}</strong></span><span>Marża szacunkowa<strong class="positive">${money.format(totals.estimatedMargin)}</strong></span></div><button class="icon-btn delete-visit" data-visit-id="${visit.id}" title="Usuń wpis">×</button></article>`; }).join('') : '<div class="empty-state">Nie znaleziono wizyt.</div>';
-    $$('.delete-visit').forEach(button => button.onclick = () => { if (!confirm('Usunąć tę demonstracyjną wizytę i jej przypomnienia?')) return; state.visits = state.visits.filter(item => item.id !== button.dataset.visitId); state.reminders = state.reminders.filter(item => item.visitId !== button.dataset.visitId); saveState(); render(); toast('Wizyta usunięta'); });
+    $$('.delete-visit').forEach(button => button.onclick = () => { if (!confirm('Usunąć tę wizytę i powiązane z nią przypomnienia?')) return; state.visits = state.visits.filter(item => item.id !== button.dataset.visitId); state.reminders = state.reminders.filter(item => item.visitId !== button.dataset.visitId); saveState(); render(); toast('Wizyta usunięta'); });
   }
 
   function clientStats(client) {
@@ -235,7 +235,7 @@
     const totals = visits.reduce((acc, visit) => { const item = visitTotals(visit); acc.service += item.serviceValue; acc.collected += item.collected; acc.cost += item.productCost; acc.margin += item.estimatedMargin; acc.cosmetics += num(visit.cosmetics); acc.vouchers += num(visit.voucherSold); return acc; }, { service: 0, collected: 0, cost: 0, margin: 0, cosmetics: 0, vouchers: 0 });
     $('#financeSummary').innerHTML = [
       ['Wartość zabiegów', money.format(totals.service), 'po rabatach'], ['Wpłaty przypisane', money.format(totals.collected), 'wraz z zadatkami'],
-      ['Koszt preparatów', money.format(totals.cost), 'wg fikcyjnej bazy kosztów'], ['Marża szacunkowa', money.format(totals.margin), 'przed kosztami stałymi i podatkami']
+      ['Koszt preparatów', money.format(totals.cost), 'na podstawie kosztów jednostkowych'], ['Marża szacunkowa', money.format(totals.margin), 'przed kosztami stałymi i podatkami']
     ].map(([label, value, note], index) => `<article class="finance-card ${index === 3 ? 'accent' : ''}"><span>${label}</span><strong>${value}</strong><small>${note}</small></article>`).join('');
     const methods = visits.reduce((acc, visit) => { const amount = visitTotals(visit).collected; acc[visit.paymentMethod] = (acc[visit.paymentMethod] || 0) + amount; return acc; }, {});
     const max = Math.max(...Object.values(methods), 1);
@@ -249,7 +249,12 @@
     const form = $('#settingsForm');
     form.elements.salonName.value = state.settings.salonName; form.elements.ownerName.value = state.settings.ownerName; form.elements.booksyLink.value = state.settings.booksyLink; form.elements.tone.value = state.settings.tone; form.elements.consentOnly.checked = state.settings.consentOnly;
     $('#settingsClientCount').textContent = state.clients.length; $('#settingsVisitCount').textContent = state.visits.length; $('#settingsReminderCount').textContent = state.reminders.length;
-    $('#rulesGrid').innerHTML = SERVICE_RULES.map(service => `<article class="rule-card"><strong>${escapeHtml(service.name)}</strong>${service.reminders.map(rule => `<div><span>${escapeHtml(rule.label)}</span><small>${rule.afterDays === 0 ? 'od razu' : rule.afterDays === rule.targetDays ? `po ${rule.afterDays} dniach` : `${rule.targetDays - rule.afterDays} dni przed terminem`}</small></div>`).join('')}</article>`).join('');
+    const timingLabel = rule => {
+      if (rule.afterDays === 0) return 'od razu';
+      if (rule.afterDays !== rule.targetDays) return `${rule.targetDays - rule.afterDays} dni przed terminem`;
+      return ({ 30: 'po miesiącu', 90: 'po 3 miesiącach', 240: 'po 8 miesiącach', 365: 'po roku' }[rule.afterDays] || `po ${rule.afterDays} dniach`);
+    };
+    $('#rulesGrid').innerHTML = SERVICE_RULES.map(service => `<article class="rule-card"><strong>${escapeHtml(service.name)}</strong>${service.reminders.map(rule => `<div><span>${escapeHtml(rule.label)}</span><small>${timingLabel(rule)}</small></div>`).join('')}</article>`).join('');
   }
 
   function switchView(name) {
