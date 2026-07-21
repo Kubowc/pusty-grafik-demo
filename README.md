@@ -1,57 +1,64 @@
-# Pusty Grafik
+# Pusty Grafik — CRM salonu
 
-Lokalny MVP dla małego salonu beauty. Pomaga znaleźć klientki gotowe na kolejną wizytę, przygotować wiadomość do zatwierdzenia i policzyć odzyskany przychód.
+Publiczna demonstracja prostego CRM-u dla salonu medycyny estetycznej. Łączy rejestr wizyt, koszt preparatów, operacyjny podgląd finansów, przypomnienia SMS i pomoc w wypełnianiu wolnych terminów.
 
-## Wersja demonstracyjna online
-
-Po uruchomieniu GitHub Pages aplikacja będzie dostępna pod adresem:
+## Demonstracja online
 
 https://kubowc.github.io/pusty-grafik-demo/
 
-Repozytorium i strona są publiczne. Wszystkie klientki, numery telefonów, terminy i wyniki zawarte w kodzie są fikcyjne. Nie wolno dodawać do repozytorium prawdziwego eksportu z Booksy ani innych danych salonu.
+Repozytorium i GitHub Pages są publiczne. Wszystkie klientki, numery telefonów, wizyty, koszty oraz wyniki zapisane w kodzie są fikcyjne. Nigdy nie należy umieszczać tutaj prawdziwego eksportu z Booksy.
 
-## Jak uruchomić
+## Co pokazuje obecna wersja
 
-Otwórz plik `index.html` w Chrome, Edge, Safari lub Firefox. Aplikacja nie wymaga instalacji ani konta. Dane demonstracyjne pojawią się automatycznie.
+- pulpit właścicielki z najważniejszymi zadaniami,
+- rejestr wizyt i formularz dodawania nowej wizyty,
+- cenę, rabat, zadatek, kosmetyki, sprzedaż i realizację vouchera,
+- formę płatności i kwotę pobraną przy wizycie,
+- użyty preparat, ilość i demonstracyjny koszt jednostkowy,
+- wartość zabiegu i szacunkową marżę przed kosztami stałymi i podatkami,
+- automatyczne wyliczenie dat przypomnień według zabiegu,
+- edytowalne wiadomości SMS z linkiem do zapisów Booksy,
+- ręczne zatwierdzanie, anulowanie i historię przypomnień,
+- bazę klientek i operacyjny raport finansowy,
+- dobieranie klientek do demonstracyjnych wolnych terminów,
+- eksport wizyt, raportu miesięcznego i kopii danych.
 
-### Telefon
+## Zasady przypomnień w demonstracji
 
-Do wysłania na telefon użyj pliku `Pusty-Grafik-Demo.html` z głównego folderu `outputs`. Jest to wersja jednoplikowa — wygląd i działanie aplikacji są zapisane w środku, więc telefon nie musi odnajdywać osobnych plików CSS i JavaScript.
+| Zabieg | Reguła |
+|---|---|
+| BTX | od razu wiadomość o bezpłatnej konsultacji za 2 tygodnie oraz kolejna po 3 miesiącach |
+| Modelowanie ust | przypomnienie po 8 miesiącach |
+| Wolumetria twarzy | przypomnienie po roku |
+| Biostymulacja | przypomnienie po miesiącu |
+| Lift powięziowo-skroniowy | przypomnienie po 46 dniach, czyli 2 tygodnie przed kolejnym etapem po 2 miesiącach |
+| Kwas polimlekowy | przypomnienie po 46 dniach |
+| Hydroksyapatyt wapnia | przypomnienie po 46 dniach |
 
-Plik trzeba otworzyć w prawdziwej przeglądarce. Podgląd załącznika w WhatsAppie, Messengerze, Gmailu lub aplikacji Pliki może blokować działanie stron HTML. Najpewniejszą opcją dla odbiorcy mobilnego nadal jest zwykły adres internetowy.
+SMS-y nie są wysyłane automatycznie. W publicznej wersji można je skopiować i ręcznie oznaczyć jako wysłane. Wiadomość można też anulować, gdy klientka zdążyła już umówić kolejną wizytę.
 
-## Jak pokazać aplikację
+## Ważne rozróżnienia finansowe
 
-1. Otwórz aplikację. Przykładowy salon jest już gotowy, więc nie trzeba niczego konfigurować.
-2. Na ekranie **Dzisiaj** wybierz wolny termin i pokaż sugerowaną klientkę oraz gotową wiadomość.
-3. Kliknij **Dodaj do sprawdzenia**, a następnie przycisk z haczykiem. Wiadomość zostanie skopiowana do wklejenia w SMS-ie, WhatsAppie lub Instagramie.
-4. Wejdź w **Wyniki** i zmień rezultat kontaktu na **Zarezerwowano**. Odzyskany przychód zaktualizuje się automatycznie.
-5. Kliknij **Dodaj dane z Booksy**, aby pokazać nietechniczny proces rozpoczęcia pracy z prawdziwymi danymi.
+Demonstracja pokazuje trzy osobne wartości:
 
-## Pierwszy pilotaż z Booksy
+1. **Wartość zabiegu** — cena po rabacie, niezależnie od tego, czy klientka płaci gotówką, zadatkiem czy voucherem.
+2. **Wpłata przypisana** — kwota pobrana przy wizycie wraz z zadatkiem; wykorzystany voucher obniża wpłatę przy wizycie.
+3. **Marża szacunkowa** — wartość zabiegu minus demonstracyjny koszt zużytego preparatu.
 
-Właścicielka nie musi wiedzieć, czym jest CSV ani przygotowywać tabel. Interfejs prowadzi ją przez dwa proste kroki:
+To nie jest system księgowy. W obliczeniach nie są automatycznie odejmowane VAT, CIT, koszty stałe, prowizje płatnicze ani pozostałe koszty spółki. Reguły podatkowe dla zabiegów, kosmetyków, zadatków i voucherów musi potwierdzić księgowa salonu.
 
-1. Poproszenie Booksy o listę klientek, historię wizyt i listę usług przy użyciu gotowej wiadomości.
-2. Dodanie otrzymanych plików bez ich otwierania i poprawiania.
+## Uruchomienie
 
-Pierwszy rzeczywisty eksport powinien zostać sprawdzony wspólnie. Po uzyskaniu anonimowego przykładu importer można dopasować do faktycznej struktury plików danego konta. Aktualna wersja automatycznie odczytuje przygotowany plik demonstracyjny, a dla pozostałych formatów pokazuje zrozumiałą informację o konieczności jednorazowego dopasowania.
+Otwórz `index.html` w aktualnej przeglądarce. Aplikacja nie wymaga instalacji, konta ani serwera. Dane są przechowywane lokalnie w `localStorage` przeglądarki.
 
-## Dane i prywatność
+Wersja `Pusty-Grafik-Demo.html` w folderze `outputs` zawiera HTML, CSS i JavaScript w jednym pliku. Na telefonie najpewniejsza pozostaje demonstracja pod zwykłym adresem GitHub Pages, ponieważ podglądy załączników często blokują skrypty.
 
-Dane są przechowywane w pamięci tej przeglądarki (`localStorage`) i nie są wysyłane do serwera. Nie importuj informacji o zdrowiu, alergiach, przeciwwskazaniach ani zdjęć zabiegów. Przed realnym użyciem salon powinien potwierdzić podstawę prawną kontaktu i zasady retencji danych.
+## Granice publicznej demonstracji
 
-GitHub Pages służy wyłącznie do prezentacji na fikcyjnych lub zanonimizowanych danych. Wdrożenie dla konkretnego salonu wymaga prywatnego hostingu, kontroli dostępu, kopii zapasowych i uzgodnienia zasad przetwarzania danych.
+- Brak serwera, logowania i synchronizacji między urządzeniami.
+- Brak prawdziwego importera Booksy — pierwszy anonimowy eksport trzeba dopiero przeanalizować i dopasować.
+- Brak integracji sprawdzającej, czy klientka już zarezerwowała wizytę.
+- Brak dostawcy SMS i automatycznej wysyłki.
+- Koszty preparatów są fikcyjne i służą wyłącznie do pokazania sposobu działania.
 
-## Zakres MVP
-
-- działa bez serwera i bez klucza API,
-- prowadzi właścicielkę przez dodawanie danych z Booksy bez technicznego słownictwa,
-- automatycznie odczytuje przygotowany plik demonstracyjny,
-- wybiera kandydatki według usługi, cyklu wizyt i zgody,
-- tworzy edytowalne wiadomości po polsku,
-- wymaga zatwierdzenia przez człowieka,
-- rejestruje odpowiedzi i odzyskany przychód,
-- pobiera raport wyników i kopię danych.
-
-Wolne terminy w tej wersji są danymi demonstracyjnymi. Kolejnym krokiem po pilotażu powinien być import grafiku z konkretnego systemu rezerwacji używanego przez salon.
+Wdrożenie z prawdziwymi danymi wymaga prywatnego hostingu, dostępu tylko dla salonu, kopii zapasowych, zasad retencji, podstawy prawnej kontaktu oraz konfiguracji operatora SMS.

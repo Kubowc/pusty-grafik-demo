@@ -1,436 +1,312 @@
 (() => {
   'use strict';
 
-  const STORAGE_KEY = 'pusty-grafik-v1';
+  const STORAGE_KEY = 'pusty-grafik-crm-v2';
   const DAY = 86400000;
-  const plDate = new Intl.DateTimeFormat('pl-PL', { weekday: 'short', day: 'numeric', month: 'short' });
-  const plFullDate = new Intl.DateTimeFormat('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' });
+  const BOOKSY_LINK = 'https://booksy.com/pl-pl/65605_karina-pniewsky-aesthetic-pirua-beauty_medycyna-estetyczna_3_warszawa';
   const money = new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN', maximumFractionDigits: 0 });
-
+  const shortDate = new Intl.DateTimeFormat('pl-PL', { day: 'numeric', month: 'short' });
+  const fullDate = new Intl.DateTimeFormat('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' });
   const $ = (selector, scope = document) => scope.querySelector(selector);
   const $$ = (selector, scope = document) => [...scope.querySelectorAll(selector)];
-  const iso = date => date.toISOString().slice(0, 10);
-  const dateFromToday = days => iso(new Date(Date.now() + days * DAY));
-  const daysBetween = (a, b) => Math.round((new Date(b) - new Date(a)) / DAY);
-  const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
-  const initials = name => name.split(/\s+/).map(x => x[0]).join('').slice(0, 2).toUpperCase();
-  const capitalize = text => text.charAt(0).toUpperCase() + text.slice(1);
-  const firstNameVocative = name => ({ Anna: 'Aniu', Ania: 'Aniu', Karolina: 'Karolino', Natalia: 'Natalio', Monika: 'Moniko', Julia: 'Julio', Kasia: 'Kasiu', Katarzyna: 'Kasiu', Ola: 'Olu', Aleksandra: 'Olu', Marta: 'Marto', Ewa: 'Ewo', Zofia: 'Zosiu' }[name.split(' ')[0]] || name.split(' ')[0]);
-  const clientCountLabel = count => count === 1 ? '1 klientka' : (count >= 2 && count <= 4 ? `${count} klientki` : `${count} klientek`);
-  const messageCountLabel = count => count === 1 ? '1 wiadomość' : (count >= 2 && count <= 4 ? `${count} wiadomości` : `${count} wiadomości`);
+  const num = value => Math.max(0, Number(value) || 0);
+  const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+  const initials = name => name.split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase();
+  const today = () => { const value = new Date(); value.setHours(0, 0, 0, 0); return value; };
+  const toIso = date => { const value = new Date(date); value.setMinutes(value.getMinutes() - value.getTimezoneOffset()); return value.toISOString().slice(0, 10); };
+  const dateFromToday = days => toIso(new Date(today().getTime() + days * DAY));
+  const addDays = (date, days) => toIso(new Date(new Date(`${date}T12:00:00`).getTime() + days * DAY));
+  const daysBetween = (from, to) => Math.round((new Date(`${to}T12:00:00`) - new Date(`${from}T12:00:00`)) / DAY);
+  const formatDate = value => shortDate.format(new Date(`${value}T12:00:00`)).replace('.', '');
+  const firstNameVocative = name => ({ Anna: 'Aniu', Karolina: 'Karolino', Natalia: 'Natalio', Monika: 'Moniko', Julia: 'Julio', Kasia: 'Kasiu', Katarzyna: 'Kasiu', Ola: 'Olu', Aleksandra: 'Olu', Marta: 'Marto', Ewa: 'Ewo', Zofia: 'Zosiu' }[name.split(' ')[0]] || name.split(' ')[0]);
+
+  const SERVICE_RULES = [
+    { id: 'btx', name: 'BTX', price: 1200, reminders: [
+      { code: 'btx-control', label: 'Konsultacja pozabiegowa', afterDays: 0, targetDays: 14 },
+      { code: 'btx-refresh', label: 'Odświeżenie BTX', afterDays: 90, targetDays: 90 }
+    ] },
+    { id: 'lips', name: 'Modelowanie ust', price: 899, reminders: [{ code: 'lips-refresh', label: 'Odświeżenie ust', afterDays: 240, targetDays: 240 }] },
+    { id: 'volumetry', name: 'Wolumetria twarzy', price: 1800, reminders: [{ code: 'volumetry-refresh', label: 'Odświeżenie efektu', afterDays: 365, targetDays: 365 }] },
+    { id: 'biostimulation', name: 'Biostymulacja', price: 750, reminders: [{ code: 'bio-stage', label: 'Kolejny etap biostymulacji', afterDays: 30, targetDays: 30 }] },
+    { id: 'temporal-lift', name: 'Lift powięziowo-skroniowy', price: 2500, reminders: [{ code: 'series-60', label: 'Kolejny etap zabiegu', afterDays: 46, targetDays: 60 }] },
+    { id: 'plla', name: 'Kwas polimlekowy', price: 1800, reminders: [{ code: 'series-60', label: 'Kolejny etap zabiegu', afterDays: 46, targetDays: 60 }] },
+    { id: 'caha', name: 'Hydroksyapatyt wapnia', price: 1800, reminders: [{ code: 'series-60', label: 'Kolejny etap zabiegu', afterDays: 46, targetDays: 60 }] }
+  ];
+
+  const PRODUCTS = [
+    { id: '', name: 'Bez preparatu', unit: 'ml', costPerUnit: 0 },
+    { id: 'botulinum', name: 'Toksyna botulinowa — demo', unit: 'j.', costPerUnit: 11 },
+    { id: 'filler', name: 'Kwas hialuronowy — demo', unit: 'ml', costPerUnit: 390 },
+    { id: 'stimulator', name: 'Biostymulator — demo', unit: 'ml', costPerUnit: 220 },
+    { id: 'plla-product', name: 'Kwas polimlekowy — demo', unit: 'fiol.', costPerUnit: 620 },
+    { id: 'caha-product', name: 'Hydroksyapatyt wapnia — demo', unit: 'ml', costPerUnit: 510 }
+  ];
 
   function demoState() {
     const clients = [
-      ['c1', 'Anna Kowalska', '500 120 340', 'Manicure hybrydowy', -34, 28, 140, true],
-      ['c2', 'Karolina Maj', '510 843 221', 'Manicure hybrydowy', -31, 28, 140, true],
-      ['c3', 'Natalia Wójcik', '602 114 937', 'Uzupełnienie żelu', -29, 24, 170, true],
-      ['c4', 'Monika Lis', '690 332 118', 'Laminacja brwi', -47, 42, 150, true],
-      ['c5', 'Julia Nowak', '508 771 009', 'Pedicure hybrydowy', -39, 35, 170, true],
-      ['c6', 'Kasia Mazur', '604 225 901', 'Manicure hybrydowy', -24, 28, 140, true],
-      ['c7', 'Ola Zielińska', '519 400 762', 'Laminacja brwi', -35, 42, 150, true],
-      ['c8', 'Ewa Król', '606 813 447', 'Uzupełnienie żelu', -38, 24, 170, false],
-      ['c9', 'Zofia Pawlik', '575 192 440', 'Pedicure hybrydowy', -26, 35, 170, true],
-      ['c10', 'Marta Kaczmarek', '533 727 180', 'Manicure hybrydowy', -43, 28, 140, true]
-    ].map(([id, name, phone, service, days, repeatDays, price, consent]) => ({ id, name, phone, service, lastVisit: dateFromToday(days), repeatDays, price, consent }));
-
-    const slots = [
-      ['s1', 1, '16:30', 90, 'Manicure hybrydowy', 'Marta', 140],
-      ['s2', 2, '12:00', 90, 'Uzupełnienie żelu', 'Marta', 170],
-      ['s3', 3, '14:30', 60, 'Laminacja brwi', 'Ola', 150],
-      ['s4', 5, '10:00', 100, 'Pedicure hybrydowy', 'Marta', 170],
-      ['s5', 6, '17:00', 90, 'Manicure hybrydowy', 'Ola', 140]
-    ].map(([id, day, time, duration, service, employee, value]) => ({ id, date: dateFromToday(day), time, duration, service, employee, value }));
-
-    const history = [
-      { id: 'h1', clientId: 'c10', slotId: 'past1', date: dateFromToday(-8), service: 'Manicure hybrydowy', value: 140, status: 'booked', message: 'Zwolnił nam się termin — czy pasuje Ci jutro o 15:00?' },
-      { id: 'h2', clientId: 'c4', slotId: 'past2', date: dateFromToday(-5), service: 'Laminacja brwi', value: 150, status: 'booked', message: 'Czy masz ochotę odświeżyć brwi w tym tygodniu?' },
-      { id: 'h3', clientId: 'c6', slotId: 'past3', date: dateFromToday(-3), service: 'Manicure hybrydowy', value: 140, status: 'no_reply', message: 'Mamy wolny termin w piątek o 13:30.' },
-      { id: 'h4', clientId: 'c9', slotId: 'past4', date: dateFromToday(-1), service: 'Pedicure hybrydowy', value: 170, status: 'sent', message: 'Zwolnił się termin na pedicure — czy chciałabyś go zarezerwować?' }
+      ['c1', 'Anna Kowalska', '500 120 340', true], ['c2', 'Karolina Maj', '510 843 221', true],
+      ['c3', 'Natalia Wójcik', '602 114 937', true], ['c4', 'Monika Lis', '690 332 118', true],
+      ['c5', 'Julia Nowak', '508 771 009', true], ['c6', 'Kasia Mazur', '604 225 901', false]
+    ].map(([id, name, phone, consent]) => ({ id, name, phone, consent }));
+    const visits = [
+      makeVisit('v1', 'c1', 'btx', -10, 1200, 0, 'botulinum', 40, 200, 0, 0, 0, 'Karta'),
+      makeVisit('v2', 'c2', 'lips', -20, 899, 0, 'filler', 1, 200, 180, 0, 0, 'BLIK'),
+      makeVisit('v3', 'c3', 'biostimulation', -35, 750, 10, 'stimulator', 1, 0, 0, 0, 0, 'Gotówka'),
+      makeVisit('v4', 'c4', 'volumetry', -120, 1800, 0, 'filler', 2, 200, 0, 0, 0, 'Przelew'),
+      makeVisit('v5', 'c5', 'temporal-lift', -50, 2500, 0, 'filler', 2, 200, 0, 500, 0, 'Karta'),
+      makeVisit('v6', 'c2', 'lips', -250, 899, 0, 'filler', 1, 0, 0, 0, 899, 'Voucher')
     ];
-
+    const reminders = visits.flatMap(visit => remindersForVisit(visit));
+    const alreadySent = reminders.find(item => item.visitId === 'v1' && item.ruleCode === 'btx-control');
+    if (alreadySent) { alreadySent.status = 'sent'; alreadySent.sentDate = addDays(visits[0].date, 1); }
+    const slots = [
+      ['s1', 1, '14:00', 60, 'lips', 899], ['s2', 2, '16:30', 45, 'btx', 1200], ['s3', 5, '12:00', 60, 'biostimulation', 750]
+    ].map(([id, days, time, duration, serviceId, value]) => ({ id, date: dateFromToday(days), time, duration, serviceId, value }));
     return {
-      clients,
-      slots,
-      queue: [
-        { id: 'q1', clientId: 'c1', slotId: 's1', message: createMessage(clients[0], slots[0], 'Studio Lune', 'warm') },
-        { id: 'q2', clientId: 'c3', slotId: 's2', message: createMessage(clients[2], slots[1], 'Studio Lune', 'warm') }
-      ],
-      history,
-      settings: { salonName: 'Studio Lune', ownerName: 'Marta', tone: 'warm', discount: 10, consentOnly: true }
+      clients, visits, reminders, slots, queue: [],
+      settings: { salonName: 'Karina Pniewsky Aesthetic & Pirua Beauty', ownerName: 'Karina', booksyLink: BOOKSY_LINK, tone: 'warm', consentOnly: true }
     };
   }
 
-  function createMessage(client, slot, salonName = 'Studio Lune', tone = 'warm') {
-    const day = plFullDate.format(new Date(slot.date)).replace(',', '');
-    const greeting = `Cześć ${firstNameVocative(client.name)}!`;
-    if (tone === 'short') return `${greeting} Zwolnił nam się termin na ${slot.service.toLowerCase()}: ${day} o ${slot.time}. Czy chcesz go zarezerwować? — ${salonName}`;
-    const elapsed = daysBetween(client.lastVisit, iso(new Date()));
-    const weeks = Math.max(1, Math.round(elapsed / 7));
-    return `${greeting} Minęło już około ${weeks} tygodni od Twojej ostatniej wizyty. Zwolnił nam się termin na ${slot.service.toLowerCase()} — ${day} o ${slot.time}. Czy chciałabyś go zarezerwować? 😊\n\n${salonName}`;
+  function makeVisit(id, clientId, serviceId, dayOffset, price, discount, productId, productAmount, deposit, cosmetics, voucherSold, voucherUsed, paymentMethod) {
+    return { id, clientId, serviceId, date: dateFromToday(dayOffset), price, discount, productId, productAmount, deposit, cosmetics, voucherSold, voucherUsed, paymentMethod };
+  }
+
+  function getService(id) { return SERVICE_RULES.find(item => item.id === id) || SERVICE_RULES[0]; }
+  function getProduct(id) { return PRODUCTS.find(item => item.id === id) || PRODUCTS[0]; }
+  function getClient(id) { return state.clients.find(item => item.id === id); }
+
+  function visitTotals(visit) {
+    const serviceValue = Math.round(num(visit.price) * (1 - Math.min(100, num(visit.discount)) / 100));
+    const productCost = Math.round(num(visit.productAmount) * getProduct(visit.productId).costPerUnit);
+    const extras = num(visit.cosmetics) + num(visit.voucherSold);
+    const paidAtVisit = Math.max(0, serviceValue + extras - num(visit.deposit) - num(visit.voucherUsed));
+    return { serviceValue, productCost, extras, paidAtVisit, collected: paidAtVisit + num(visit.deposit), estimatedMargin: serviceValue - productCost };
+  }
+
+  function remindersForVisit(visit) {
+    const service = getService(visit.serviceId);
+    return service.reminders.map((rule, index) => ({
+      id: `r-${visit.id}-${index}`, visitId: visit.id, clientId: visit.clientId, serviceId: visit.serviceId,
+      ruleCode: rule.code, label: rule.label, sendDate: addDays(visit.date, rule.afterDays), targetDate: addDays(visit.date, rule.targetDays), status: 'pending'
+    }));
+  }
+
+  function reminderMessage(reminder) {
+    if (reminder.message) return reminder.message;
+    const client = getClient(reminder.clientId);
+    const link = state.settings.booksyLink;
+    const hello = `Cześć ${firstNameVocative(client.name)}!`;
+    let body = '';
+    if (reminder.ruleCode === 'btx-control') body = 'Zapraszamy na darmową konsultację pozabiegową za około 2 tygodnie. Warto zarezerwować dogodny termin już teraz.';
+    if (reminder.ruleCode === 'btx-refresh') body = 'Minęły około 3 miesiące od zabiegu BTX. Zgodnie z zaleceniami producenta efekt może zacząć stopniowo ustępować. Gdy zejdzie w całości, zapraszamy na kolejną wizytę. Warto wcześniej wybrać dogodny termin.';
+    if (reminder.ruleCode === 'lips-refresh') body = 'Minęło około 8 miesięcy od modelowania ust. Zapraszamy na odświeżenie efektu — wcześniejsza rezerwacja pomoże wybrać dogodny termin.';
+    if (reminder.ruleCode === 'volumetry-refresh') body = 'Mija rok od wolumetrii twarzy. Zapraszamy na konsultację i odświeżenie efektu. Warto wcześniej zarezerwować dogodny termin.';
+    if (reminder.ruleCode === 'bio-stage') body = 'Mija miesiąc od biostymulacji. Zapraszamy na kolejny etap terapii — zarezerwuj wcześniej termin, który najlepiej Ci odpowiada.';
+    if (reminder.ruleCode === 'series-60') body = 'Zbliża się termin kolejnego etapu zabiegu. Wysyłamy przypomnienie 2 tygodnie wcześniej, aby łatwiej było zarezerwować dogodną godzinę.';
+    if (state.settings.tone === 'short') body = `${reminder.label}: zapraszamy do rezerwacji dogodnego terminu.`;
+    return `${hello} ${body}\n\nZapisy: ${link}`;
+  }
+
+  function winbackMessage(client, slot) {
+    const service = getService(slot.serviceId);
+    return `Cześć ${firstNameVocative(client.name)}! Zwolnił nam się termin na ${service.name.toLowerCase()} — ${formatDate(slot.date)} o ${slot.time}. Czy chciałabyś go zarezerwować?\n\n${state.settings.settings?.salonName || state.settings.salonName}\n${state.settings.booksyLink}`;
   }
 
   let state = loadState();
   let selectedSlotId = state.slots[0]?.id || null;
-  let range = 3;
+  let slotRange = 3;
+  let reminderFilter = 'due';
 
   function loadState() {
     try {
       const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
-      if (stored?.clients && stored?.slots && stored?.settings) return stored;
-    } catch (_) { /* corrupted local data falls back to demo */ }
+      if (stored?.clients && stored?.visits && stored?.reminders && stored?.settings) return stored;
+    } catch (_) { /* use safe demo fallback */ }
     return demoState();
   }
-
-  function saveState() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }
-
-  function matchesForSlot(slot) {
-    return state.clients
-      .filter(client => client.service.toLowerCase() === slot.service.toLowerCase())
-      .filter(client => !state.settings.consentOnly || client.consent)
-      .filter(client => !state.queue.some(q => q.clientId === client.id && q.slotId === slot.id))
-      .map(client => {
-        const daysSince = daysBetween(client.lastVisit, iso(new Date()));
-        const overdue = daysSince - Number(client.repeatDays || 28);
-        const score = Math.max(52, Math.min(98, 76 + overdue * 2 + (client.consent ? 4 : 0)));
-        return { ...client, overdue, score };
-      })
-      .filter(client => client.overdue >= -7)
-      .sort((a, b) => b.score - a.score);
-  }
+  function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 
   function render() {
-    renderHeader();
-    renderSummary();
-    renderOpportunities();
-    renderDraft();
-    renderQueue();
-    renderClients();
-    renderResults();
-    renderSettings();
+    renderHeader(); renderToday(); renderSlots(); renderVisits(); renderClients(); renderReminders(); renderFinance(); renderSettings();
   }
 
   function renderHeader() {
-    const now = new Date();
-    $('#todayDate').textContent = plFullDate.format(now).toUpperCase();
-    $('#view-today h1').textContent = `Dzień dobry, ${state.settings.ownerName}`;
-    $('.brand small').textContent = state.settings.salonName;
+    $('#todayDate').textContent = fullDate.format(today()).toUpperCase();
+    $('#welcomeTitle').textContent = `Dzień dobry, ${state.settings.ownerName}`;
+    $('#brandSalon').textContent = state.settings.salonName;
+    const due = dueReminders().length;
+    $('#navReminderCount').textContent = due;
+    $('#navReminderCount').hidden = !due;
   }
 
-  function renderSummary() {
-    const visibleSlots = state.slots.filter(s => daysBetween(iso(new Date()), s.date) <= range);
-    const possible = visibleSlots.reduce((sum, s) => sum + s.value, 0);
-    const ready = new Set(visibleSlots.flatMap(s => matchesForSlot(s).map(c => c.id))).size;
-    const booked = state.history.filter(h => h.status === 'booked');
-    const recovered = booked.reduce((sum, h) => sum + Number(h.value || 0), 0);
+  function monthVisits() {
+    const now = today();
+    return state.visits.filter(visit => { const date = new Date(`${visit.date}T12:00:00`); return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear(); });
+  }
+  function dueReminders() { return state.reminders.filter(item => item.status === 'pending' && daysBetween(item.sendDate, toIso(today())) >= 0 && getClient(item.clientId)?.consent); }
+
+  function renderToday() {
+    const visits = monthVisits();
+    const totals = visits.reduce((acc, visit) => { const item = visitTotals(visit); acc.service += item.serviceValue; acc.collected += item.collected; acc.margin += item.estimatedMargin; return acc; }, { service: 0, collected: 0, margin: 0 });
+    const due = dueReminders();
     $('#summaryGrid').innerHTML = [
-      ['Wolne terminy', visibleSlots.length, `w ciągu ${range} dni`, true],
-      ['Potencjalny przychód', money.format(possible), 'jeśli wypełnisz wszystkie', false],
-      ['Klientki gotowe na wizytę', ready, 'z aktualną zgodą na kontakt', false],
-      ['Odzyskane w tym miesiącu', money.format(recovered), `${booked.length} potwierdzone wizyty`, false]
-    ].map(([label, value, caption, featured]) => `<article class="summary-card ${featured ? 'featured' : ''}"><span class="label">${label}</span><strong class="summary-value">${value}</strong><span class="summary-caption">${caption}</span>${featured ? '<i class="summary-accent"></i>' : ''}</article>`).join('');
-  }
+      ['Wizyty w tym miesiącu', visits.length, 'zapisane w rejestrze', true],
+      ['Wartość zabiegów', money.format(totals.service), 'po rabatach'],
+      ['Wpłaty przypisane', money.format(totals.collected), 'z zadatkami'],
+      ['SMS-y do sprawdzenia', due.length, due.length ? 'czekają na decyzję' : 'wszystko gotowe']
+    ].map(([label, value, note, featured]) => `<article class="summary-card ${featured ? 'featured' : ''}"><span class="label">${label}</span><strong class="summary-value">${value}</strong><span class="summary-caption">${note}</span></article>`).join('');
 
-  function renderOpportunities() {
-    const slots = state.slots.filter(s => {
-      const days = daysBetween(iso(new Date()), s.date);
-      return days >= 0 && days <= range;
-    });
-    if (!slots.some(s => s.id === selectedSlotId)) selectedSlotId = slots[0]?.id || null;
-    $('#opportunityList').innerHTML = slots.length ? slots.map(slot => {
-      const d = new Date(slot.date);
-      const parts = plDate.formatToParts(d);
-      const weekday = parts.find(p => p.type === 'weekday')?.value || '';
-      const day = parts.find(p => p.type === 'day')?.value || '';
-      const matches = matchesForSlot(slot);
-      return `<article class="opportunity-card ${slot.id === selectedSlotId ? 'active' : ''}" data-slot-id="${slot.id}" tabindex="0">
-        <div class="date-tile"><span>${escapeHtml(weekday)}</span><strong>${day}</strong></div>
-        <div><h3>${escapeHtml(slot.service)} · ${slot.time}</h3><div class="opportunity-meta"><span>${slot.duration} min</span><span>${escapeHtml(slot.employee)}</span><span>${money.format(slot.value)}</span></div></div>
-        <div class="match-count"><strong>${clientCountLabel(matches.length)}</strong><span>dobrze pasują</span></div>
-      </article>`;
-    }).join('') : '<div class="empty-state">Brak wolnych terminów w tym zakresie.</div>';
-    $$('.opportunity-card').forEach(card => {
-      const select = () => { selectedSlotId = card.dataset.slotId; renderOpportunities(); renderDraft(); };
-      card.addEventListener('click', select);
-      card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') select(); });
-    });
-  }
+    const tasks = due.slice(0, 3).map(reminder => { const client = getClient(reminder.clientId); return `<button class="task-row" data-go="reminders"><span class="task-icon">✉</span><span><strong>${escapeHtml(client.name)}</strong><small>${escapeHtml(reminder.label)} · ${formatDate(reminder.sendDate)}</small></span><b>→</b></button>`; });
+    const openSlots = state.slots.filter(slot => daysBetween(toIso(today()), slot.date) >= 0 && daysBetween(toIso(today()), slot.date) <= 7).length;
+    tasks.push(`<div class="task-row"><span class="task-icon soft">○</span><span><strong>${openSlots} wolne terminy w ciągu 7 dni</strong><small>Możesz przygotować wiadomości poniżej.</small></span></div>`);
+    $('#todayTasks').innerHTML = tasks.join('');
 
-  function renderDraft() {
-    const panel = $('#draftPanel');
-    const slot = state.slots.find(s => s.id === selectedSlotId);
-    const matches = slot ? matchesForSlot(slot) : [];
-    if (!slot || !matches.length) {
-      panel.innerHTML = `<div class="empty-draft"><span>✦</span><p>${slot ? 'Brak kolejnych pasujących klientek. Spróbuj innego terminu.' : 'Wybierz termin, aby przygotować wiadomość.'}</p></div>`;
-      return;
+    const latest = [...state.visits].sort((a, b) => b.date.localeCompare(a.date))[0];
+    if (latest) {
+      const client = getClient(latest.clientId); const service = getService(latest.serviceId); const totals = visitTotals(latest);
+      $('#latestVisit').innerHTML = `<div class="latest-person"><span class="initials">${initials(client.name)}</span><div><strong>${escapeHtml(client.name)}</strong><small>${formatDate(latest.date)} · ${escapeHtml(service.name)}</small></div></div><div class="dark-stats"><div><span>Wartość</span><strong>${money.format(totals.serviceValue)}</strong></div><div><span>Koszt preparatu</span><strong>${money.format(totals.productCost)}</strong></div><div><span>Marża szacunkowa</span><strong>${money.format(totals.estimatedMargin)}</strong></div></div>`;
     }
-    const client = matches[0];
-    panel.innerHTML = `<span class="draft-kicker">NAJLEPSZE DOPASOWANIE</span>
-      <div class="draft-person"><strong>${escapeHtml(client.name)}</strong><span class="score-pill">${client.score}% dopasowania</span></div>
-      <select class="client-picker" id="draftClient">${matches.map(c => `<option value="${c.id}">${escapeHtml(c.name)} · ${c.score}%</option>`).join('')}</select>
-      <textarea class="draft-message" id="draftMessage">${escapeHtml(createMessage(client, slot, state.settings.salonName, state.settings.tone))}</textarea>
-      <div class="draft-actions"><button class="button primary" id="addToQueue">Dodaj do sprawdzenia</button><button class="button dark-secondary" id="copyDraft" title="Kopiuj">⧉</button></div>
-      <p class="draft-reason">Ostatnia wizyta: ${formatDate(client.lastVisit)} · cykl: ${client.repeatDays} dni · zgoda: ${client.consent ? 'tak' : 'nie'}</p>`;
-
-    $('#draftClient').addEventListener('change', e => {
-      const nextClient = matches.find(c => c.id === e.target.value);
-      $('#draftMessage').value = createMessage(nextClient, slot, state.settings.salonName, state.settings.tone);
-      $('.draft-person strong').textContent = nextClient.name;
-      $('.score-pill').textContent = `${nextClient.score}% dopasowania`;
-      $('.draft-reason').textContent = `Ostatnia wizyta: ${formatDate(nextClient.lastVisit)} · cykl: ${nextClient.repeatDays} dni · zgoda: ${nextClient.consent ? 'tak' : 'nie'}`;
-    });
-    $('#copyDraft').addEventListener('click', () => copyText($('#draftMessage').value));
-    $('#addToQueue').addEventListener('click', () => {
-      const clientId = $('#draftClient').value;
-      state.queue.push({ id: `q${Date.now()}`, clientId, slotId: slot.id, message: $('#draftMessage').value.trim() });
-      saveState();
-      toast('Wiadomość dodana do sprawdzenia');
-      render();
-    });
+    $$('[data-go]').forEach(button => button.onclick = () => switchView(button.dataset.go));
   }
 
-  function renderQueue() {
-    $('#queueCount').textContent = messageCountLabel(state.queue.length);
-    $('#messageQueue').innerHTML = state.queue.length ? state.queue.map(item => {
-      const client = state.clients.find(c => c.id === item.clientId);
-      const slot = state.slots.find(s => s.id === item.slotId);
-      if (!client || !slot) return '';
-      return `<div class="queue-row" data-queue-id="${item.id}">
-        <span class="initials">${initials(client.name)}</span>
-        <div class="person"><strong>${escapeHtml(client.name)}</strong><span>${formatDate(slot.date)} · ${slot.time}</span></div>
-        <div class="queue-preview">${escapeHtml(item.message.replace(/\n/g, ' '))}</div>
-        <div class="queue-actions"><button class="icon-btn remove" title="Usuń">×</button><button class="icon-btn copy" title="Kopiuj">⧉</button><button class="icon-btn approve" title="Oznacz jako wysłaną">✓</button></div>
-      </div>`;
-    }).join('') : '<div class="empty-state">Nie masz teraz żadnych wiadomości do sprawdzenia.</div>';
-
-    $$('.queue-row').forEach(row => {
-      const item = state.queue.find(q => q.id === row.dataset.queueId);
-      $('.remove', row).addEventListener('click', () => { state.queue = state.queue.filter(q => q.id !== item.id); saveState(); render(); });
-      $('.copy', row).addEventListener('click', () => copyText(item.message));
-      $('.approve', row).addEventListener('click', () => {
-        const client = state.clients.find(c => c.id === item.clientId);
-        const slot = state.slots.find(s => s.id === item.slotId);
-        copyText(item.message, false);
-        state.history.unshift({ id: `h${Date.now()}`, clientId: item.clientId, slotId: item.slotId, date: iso(new Date()), service: slot.service, value: slot.value, status: 'sent', message: item.message });
-        state.queue = state.queue.filter(q => q.id !== item.id);
-        saveState(); render();
-        toast(`Skopiowano wiadomość dla ${client.name}. Oznaczono jako wysłaną.`);
-      });
-    });
+  function slotCandidates(slot) {
+    return state.clients.filter(client => (!state.settings.consentOnly || client.consent) && state.visits.some(visit => visit.clientId === client.id && visit.serviceId === slot.serviceId)).filter(client => !state.queue.some(item => item.clientId === client.id && item.slotId === slot.id));
+  }
+  function renderSlots() {
+    const slots = state.slots.filter(slot => { const days = daysBetween(toIso(today()), slot.date); return days >= 0 && days <= slotRange; });
+    if (!slots.some(slot => slot.id === selectedSlotId)) selectedSlotId = slots[0]?.id || null;
+    $('#opportunityList').innerHTML = slots.length ? slots.map(slot => { const service = getService(slot.serviceId); const candidates = slotCandidates(slot); return `<article class="opportunity-card ${slot.id === selectedSlotId ? 'active' : ''}" data-slot-id="${slot.id}" tabindex="0"><div class="date-tile"><span>${formatDate(slot.date)}</span><strong>${slot.time}</strong></div><div><h3>${escapeHtml(service.name)}</h3><div class="opportunity-meta"><span>${slot.duration} min</span><span>${money.format(slot.value)}</span></div></div><div class="match-count"><strong>${candidates.length}</strong><span>pasujących klientek</span></div></article>`; }).join('') : '<div class="empty-state">Brak wolnych terminów w tym zakresie.</div>';
+    $$('.opportunity-card').forEach(card => { const choose = () => { selectedSlotId = card.dataset.slotId; renderSlots(); }; card.onclick = choose; card.onkeydown = event => { if (event.key === 'Enter' || event.key === ' ') choose(); }; });
+    renderDraft();
+  }
+  function renderDraft() {
+    const slot = state.slots.find(item => item.id === selectedSlotId); const candidates = slot ? slotCandidates(slot) : [];
+    if (!slot || !candidates.length) { $('#draftPanel').innerHTML = `<div class="empty-draft"><span>✦</span><p>${slot ? 'Nie ma kolejnej pasującej klientki.' : 'Wybierz termin, aby przygotować wiadomość.'}</p></div>`; return; }
+    const client = candidates[0];
+    $('#draftPanel').innerHTML = `<span class="draft-kicker">WIADOMOŚĆ DO SPRAWDZENIA</span><div class="draft-person"><strong>${escapeHtml(client.name)}</strong><span class="score-pill">zgoda na SMS</span></div><select class="client-picker" id="draftClient">${candidates.map(item => `<option value="${item.id}">${escapeHtml(item.name)}</option>`).join('')}</select><textarea class="draft-message" id="draftMessage">${escapeHtml(winbackMessage(client, slot))}</textarea><div class="draft-actions"><button class="button primary" id="queueDraft">Dodaj do kolejki</button><button class="button dark-secondary" id="copyDraft" title="Kopiuj">⧉</button></div><p class="draft-reason">Nic nie zostanie wysłane automatycznie.</p>`;
+    $('#draftClient').onchange = event => { const next = getClient(event.target.value); $('#draftMessage').value = winbackMessage(next, slot); $('.draft-person strong').textContent = next.name; };
+    $('#copyDraft').onclick = () => copyText($('#draftMessage').value);
+    $('#queueDraft').onclick = () => {
+      const created = Date.now(); const clientId = $('#draftClient').value; const message = $('#draftMessage').value;
+      state.queue.push({ id: `q-${created}`, clientId, slotId: slot.id, message });
+      state.reminders.push({ id: `r-slot-${created}`, visitId: null, clientId, serviceId: slot.serviceId, ruleCode: 'empty-slot', label: 'Wolny termin', sendDate: toIso(today()), targetDate: slot.date, status: 'pending', message });
+      saveState(); toast('Wiadomość czeka w sekcji SMS'); render();
+    };
   }
 
-  function clientReadiness(client) {
-    const due = new Date(new Date(client.lastVisit).getTime() + Number(client.repeatDays) * DAY);
-    const until = daysBetween(iso(new Date()), iso(due));
-    if (until <= 0) return { label: 'Gotowa', className: 'ready', due, until };
-    if (until <= 7) return { label: `Za ${until} dni`, className: 'soon', due, until };
-    return { label: 'Później', className: 'later', due, until };
+  function renderVisits() {
+    const query = ($('#visitSearch')?.value || '').toLowerCase();
+    const visits = [...state.visits].sort((a, b) => b.date.localeCompare(a.date)).filter(visit => { const client = getClient(visit.clientId); const service = getService(visit.serviceId); return `${client?.name} ${service.name}`.toLowerCase().includes(query); });
+    $('#visitList').innerHTML = visits.length ? visits.map(visit => { const client = getClient(visit.clientId); const service = getService(visit.serviceId); const product = getProduct(visit.productId); const totals = visitTotals(visit); return `<article class="visit-card"><div class="visit-main"><span class="initials">${initials(client.name)}</span><div><strong>${escapeHtml(client.name)}</strong><small>${formatDate(visit.date)} · ${escapeHtml(service.name)}</small></div></div><div class="visit-detail"><span>Preparat<small>${escapeHtml(product.name)}${visit.productAmount ? ` · ${visit.productAmount} ${product.unit}` : ''}</small></span><span>Wpłata przy wizycie<strong>${money.format(totals.paidAtVisit)}</strong></span><span>Wartość zabiegu<strong>${money.format(totals.serviceValue)}</strong></span><span>Marża szacunkowa<strong class="positive">${money.format(totals.estimatedMargin)}</strong></span></div><button class="icon-btn delete-visit" data-visit-id="${visit.id}" title="Usuń wpis">×</button></article>`; }).join('') : '<div class="empty-state">Nie znaleziono wizyt.</div>';
+    $$('.delete-visit').forEach(button => button.onclick = () => { if (!confirm('Usunąć tę demonstracyjną wizytę i jej przypomnienia?')) return; state.visits = state.visits.filter(item => item.id !== button.dataset.visitId); state.reminders = state.reminders.filter(item => item.visitId !== button.dataset.visitId); saveState(); render(); toast('Wizyta usunięta'); });
   }
 
+  function clientStats(client) {
+    const visits = state.visits.filter(visit => visit.clientId === client.id).sort((a, b) => b.date.localeCompare(a.date));
+    const total = visits.reduce((sum, visit) => sum + visitTotals(visit).serviceValue, 0);
+    const next = state.reminders.filter(reminder => reminder.clientId === client.id && reminder.status === 'pending').sort((a, b) => a.sendDate.localeCompare(b.sendDate))[0];
+    return { visits, total, next };
+  }
   function renderClients() {
-    const query = ($('#clientSearch')?.value || '').toLowerCase();
-    const filter = $('#clientFilter')?.value || 'all';
-    const clients = state.clients.filter(c => `${c.name} ${c.service}`.toLowerCase().includes(query)).filter(c => filter === 'all' || (filter === 'ready' && clientReadiness(c).until <= 0) || (filter === 'consent' && c.consent));
-    $('#clientTable').innerHTML = clients.length ? clients.map(client => {
-      const readiness = clientReadiness(client);
-      return `<tr><td class="client-name">${escapeHtml(client.name)}<small>${escapeHtml(client.phone)} · ${client.consent ? 'zgoda na kontakt' : 'brak zgody'}</small></td><td>${escapeHtml(client.service)}</td><td>${formatDate(client.lastVisit)}</td><td>${formatDate(iso(readiness.due))}</td><td><span class="status ${readiness.className}">${readiness.label}</span></td></tr>`;
-    }).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--muted)">Brak klientek pasujących do filtra.</td></tr>';
+    const query = ($('#clientSearch')?.value || '').toLowerCase(); const filter = $('#clientFilter')?.value || 'all';
+    const clients = state.clients.filter(client => `${client.name} ${client.phone} ${clientStats(client).visits.map(visit => getService(visit.serviceId).name).join(' ')}`.toLowerCase().includes(query)).filter(client => filter === 'all' || (filter === 'consent' && client.consent) || (filter === 'ready' && clientStats(client).next && daysBetween(clientStats(client).next.sendDate, toIso(today())) >= 0));
+    $('#clientTable').innerHTML = clients.length ? clients.map(client => { const stats = clientStats(client); const last = stats.visits[0]; return `<tr><td class="client-name">${escapeHtml(client.name)}<small>${escapeHtml(client.phone)} · ${client.consent ? 'zgoda na SMS' : 'brak zgody'}</small></td><td>${last ? escapeHtml(getService(last.serviceId).name) : '—'}</td><td>${last ? formatDate(last.date) : '—'}</td><td>${money.format(stats.total)}</td><td>${stats.next ? `<span class="status ${daysBetween(stats.next.sendDate, toIso(today())) >= 0 ? 'ready' : 'soon'}">${formatDate(stats.next.sendDate)}</span>` : '<span class="status later">Brak</span>'}</td></tr>`; }).join('') : '<tr><td colspan="5" class="table-empty">Brak klientek pasujących do filtra.</td></tr>';
   }
 
-  function renderResults() {
-    const booked = state.history.filter(h => h.status === 'booked');
-    const sent = state.history.length;
-    const recovered = booked.reduce((sum, h) => sum + Number(h.value || 0), 0);
-    const conversion = sent ? Math.round(booked.length / sent * 100) : 0;
-    $('#resultsSummary').innerHTML = [
-      ['Odzyskany przychód', money.format(recovered), `${booked.length} potwierdzone wizyty`],
-      ['Wysłane wiadomości', sent, 'zapisane w historii'],
-      ['Skuteczność', `${conversion}%`, 'wysłane → rezerwacja']
-    ].map(([label, value, note]) => `<article class="result-card"><span>${label}</span><strong>${value}</strong><small>${note}</small></article>`).join('');
-    $('#chartTotal').textContent = money.format(recovered);
-    const weekLabels = ['4 tyg. temu', '3 tyg. temu', '2 tyg. temu', 'Ten tydzień'];
-    const buckets = [0, 0, 0, 0];
-    booked.forEach(h => {
-      const daysAgo = Math.max(0, daysBetween(h.date, iso(new Date())));
-      const bucket = Math.max(0, 3 - Math.floor(daysAgo / 7));
-      buckets[bucket] += Number(h.value || 0);
-    });
-    const max = Math.max(...buckets, 1);
-    $('#barChart').innerHTML = buckets.map((value, i) => `<div class="bar-column" title="${money.format(value)}"><div class="bar" style="height:${Math.round(value / max * 125)}px"></div><span>${weekLabels[i]}</span></div>`).join('');
-    $('#historyList').innerHTML = state.history.length ? state.history.map(item => {
-      const client = state.clients.find(c => c.id === item.clientId);
-      if (!client) return '';
-      return `<div class="history-row" data-history-id="${item.id}"><span class="initials">${initials(client.name)}</span><div class="person"><strong>${escapeHtml(client.name)}</strong><span>${formatDate(item.date)} · ${escapeHtml(item.service)}</span></div><div class="queue-preview">${escapeHtml(item.message)}</div><div class="history-actions"><select aria-label="Wynik kontaktu"><option value="sent" ${item.status === 'sent' ? 'selected' : ''}>Wysłana</option><option value="booked" ${item.status === 'booked' ? 'selected' : ''}>Zarezerwowano</option><option value="no_reply" ${item.status === 'no_reply' ? 'selected' : ''}>Brak odpowiedzi</option><option value="declined" ${item.status === 'declined' ? 'selected' : ''}>Nie teraz</option></select></div></div>`;
-    }).join('') : '<div class="empty-state">Historia pojawi się po wysłaniu pierwszej wiadomości.</div>';
-    $$('.history-row select').forEach(select => select.addEventListener('change', e => {
-      const id = e.target.closest('.history-row').dataset.historyId;
-      state.history.find(h => h.id === id).status = e.target.value;
-      saveState(); renderResults(); renderSummary(); renderSettings();
-      toast('Wynik został zapisany');
-    }));
+  function renderReminders() {
+    const current = toIso(today());
+    let reminders = state.reminders.filter(item => {
+      const isDue = item.status === 'pending' && daysBetween(item.sendDate, current) >= 0;
+      if (reminderFilter === 'due') return isDue;
+      if (reminderFilter === 'upcoming') return item.status === 'pending' && !isDue;
+      return item.status === 'sent';
+    }).sort((a, b) => a.sendDate.localeCompare(b.sendDate));
+    $('#dueCount').textContent = dueReminders().length;
+    $('#reminderList').innerHTML = reminders.length ? reminders.map(reminder => { const client = getClient(reminder.clientId); const service = getService(reminder.serviceId); const blocked = !client.consent; const message = reminderMessage(reminder); return `<article class="reminder-card ${blocked ? 'blocked' : ''}"><div class="reminder-date"><span>${reminder.status === 'sent' ? 'WYSŁANO' : daysBetween(reminder.sendDate, current) >= 0 ? 'GOTOWE' : 'WYŚLIJ'}</span><strong>${formatDate(reminder.status === 'sent' ? reminder.sentDate || reminder.sendDate : reminder.sendDate)}</strong></div><div class="reminder-content"><div class="reminder-person"><span class="initials">${initials(client.name)}</span><div><strong>${escapeHtml(client.name)}</strong><small>${escapeHtml(service.name)} · ${escapeHtml(reminder.label)}</small></div></div><textarea data-reminder-text="${reminder.id}" ${reminder.status === 'sent' || blocked ? 'readonly' : ''}>${escapeHtml(message)}</textarea><p class="reminder-note">${blocked ? 'Brak zapisanej zgody — wysyłka zablokowana.' : `Sugerowany termin wizyty: ${formatDate(reminder.targetDate)}.`}</p></div><div class="reminder-actions">${reminder.status === 'pending' && !blocked ? `<button class="button secondary copy-reminder" data-id="${reminder.id}">Kopiuj</button><button class="button primary send-reminder" data-id="${reminder.id}">Oznacz jako wysłany</button><button class="text-link cancel-reminder" data-id="${reminder.id}">Klientka już zapisana</button>` : reminder.status === 'sent' ? '<span class="status booked">Wysłana</span>' : '<span class="status later">Brak zgody</span>'}</div></article>`; }).join('') : '<div class="empty-state">W tej sekcji nie ma teraz żadnych wiadomości.</div>';
+    $$('[data-reminder-text]').forEach(area => area.onchange = () => { const reminder = state.reminders.find(item => item.id === area.dataset.reminderText); reminder.message = area.value.trim(); saveState(); });
+    $$('.copy-reminder').forEach(button => button.onclick = () => { const reminder = state.reminders.find(item => item.id === button.dataset.id); const area = $(`[data-reminder-text="${button.dataset.id}"]`); reminder.message = area.value.trim(); saveState(); copyText(reminder.message); });
+    $$('.send-reminder').forEach(button => button.onclick = () => { const reminder = state.reminders.find(item => item.id === button.dataset.id); reminder.message = $(`[data-reminder-text="${button.dataset.id}"]`).value.trim(); reminder.status = 'sent'; reminder.sentDate = toIso(today()); saveState(); render(); toast('Wiadomość oznaczona jako wysłana'); });
+    $$('.cancel-reminder').forEach(button => button.onclick = () => { const reminder = state.reminders.find(item => item.id === button.dataset.id); reminder.status = 'cancelled'; saveState(); render(); toast('Przypomnienie anulowane'); });
+  }
+
+  function renderFinance() {
+    const visits = monthVisits();
+    const totals = visits.reduce((acc, visit) => { const item = visitTotals(visit); acc.service += item.serviceValue; acc.collected += item.collected; acc.cost += item.productCost; acc.margin += item.estimatedMargin; acc.cosmetics += num(visit.cosmetics); acc.vouchers += num(visit.voucherSold); return acc; }, { service: 0, collected: 0, cost: 0, margin: 0, cosmetics: 0, vouchers: 0 });
+    $('#financeSummary').innerHTML = [
+      ['Wartość zabiegów', money.format(totals.service), 'po rabatach'], ['Wpłaty przypisane', money.format(totals.collected), 'wraz z zadatkami'],
+      ['Koszt preparatów', money.format(totals.cost), 'wg fikcyjnej bazy kosztów'], ['Marża szacunkowa', money.format(totals.margin), 'przed kosztami stałymi i podatkami']
+    ].map(([label, value, note], index) => `<article class="finance-card ${index === 3 ? 'accent' : ''}"><span>${label}</span><strong>${value}</strong><small>${note}</small></article>`).join('');
+    const methods = visits.reduce((acc, visit) => { const amount = visitTotals(visit).collected; acc[visit.paymentMethod] = (acc[visit.paymentMethod] || 0) + amount; return acc; }, {});
+    const max = Math.max(...Object.values(methods), 1);
+    $('#paymentChart').innerHTML = Object.entries(methods).sort((a, b) => b[1] - a[1]).map(([method, value]) => `<div class="payment-row"><span>${escapeHtml(method)}</span><div><i style="width:${Math.max(5, value / max * 100)}%"></i></div><strong>${money.format(value)}</strong></div>`).join('') || '<div class="empty-state">Brak płatności w tym miesiącu.</div>';
+    $('#extraStats').innerHTML = `<div><span>Kosmetyki</span><strong>${money.format(totals.cosmetics)}</strong></div><div><span>Sprzedane vouchery</span><strong>${money.format(totals.vouchers)}</strong></div><p>Realizacja vouchera zmniejsza wpłatę przy wizycie, ale nie zmniejsza wartości wykonanego zabiegu.</p>`;
+    const grouped = visits.reduce((acc, visit) => { const service = getService(visit.serviceId); const item = visitTotals(visit); acc[service.name] ||= { count: 0, value: 0, cost: 0, margin: 0 }; acc[service.name].count++; acc[service.name].value += item.serviceValue; acc[service.name].cost += item.productCost; acc[service.name].margin += item.estimatedMargin; return acc; }, {});
+    $('#profitList').innerHTML = Object.entries(grouped).sort((a, b) => b[1].margin - a[1].margin).map(([name, item]) => `<div class="profit-row"><div><strong>${escapeHtml(name)}</strong><small>${item.count} ${item.count === 1 ? 'wizyta' : 'wizyty'}</small></div><span>Wartość <strong>${money.format(item.value)}</strong></span><span>Preparaty <strong>${money.format(item.cost)}</strong></span><span>Marża <strong class="positive">${money.format(item.margin)}</strong></span></div>`).join('') || '<div class="empty-state">Brak zabiegów w tym miesiącu.</div>';
   }
 
   function renderSettings() {
     const form = $('#settingsForm');
-    if (!form) return;
-    form.elements.salonName.value = state.settings.salonName;
-    form.elements.ownerName.value = state.settings.ownerName;
-    form.elements.tone.value = state.settings.tone;
-    form.elements.discount.value = state.settings.discount;
-    form.elements.consentOnly.checked = state.settings.consentOnly;
-    $('#settingsClientCount').textContent = state.clients.length;
-    $('#settingsHistoryCount').textContent = state.history.length;
+    form.elements.salonName.value = state.settings.salonName; form.elements.ownerName.value = state.settings.ownerName; form.elements.booksyLink.value = state.settings.booksyLink; form.elements.tone.value = state.settings.tone; form.elements.consentOnly.checked = state.settings.consentOnly;
+    $('#settingsClientCount').textContent = state.clients.length; $('#settingsVisitCount').textContent = state.visits.length; $('#settingsReminderCount').textContent = state.reminders.length;
+    $('#rulesGrid').innerHTML = SERVICE_RULES.map(service => `<article class="rule-card"><strong>${escapeHtml(service.name)}</strong>${service.reminders.map(rule => `<div><span>${escapeHtml(rule.label)}</span><small>${rule.afterDays === 0 ? 'od razu' : rule.afterDays === rule.targetDays ? `po ${rule.afterDays} dniach` : `${rule.targetDays - rule.afterDays} dni przed terminem`}</small></div>`).join('')}</article>`).join('');
   }
 
-  function formatDate(value) {
-    return capitalize(plDate.format(new Date(value)).replace(',', ''));
+  function switchView(name) {
+    $$('.nav-item').forEach(button => button.classList.toggle('active', button.dataset.view === name));
+    $$('.view').forEach(view => view.classList.toggle('active', view.id === `view-${name}`));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
+  function toast(message) { const element = $('#toast'); element.textContent = message; element.classList.add('show'); clearTimeout(toast.timer); toast.timer = setTimeout(() => element.classList.remove('show'), 2500); }
+  async function copyText(text) { try { await navigator.clipboard.writeText(text); } catch (_) { const area = document.createElement('textarea'); area.value = text; document.body.appendChild(area); area.select(); document.execCommand('copy'); area.remove(); } toast('Wiadomość skopiowana'); }
+  function download(filename, content, mime = 'text/csv;charset=utf-8') { const blob = new Blob(['\ufeff', content], { type: mime }); const url = URL.createObjectURL(blob); const link = Object.assign(document.createElement('a'), { href: url, download: filename }); link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
+  function csvRows(visits) { const header = 'data;klientka;telefon;zabieg;cena_po_rabacie;zadatek;zaplacono_przy_wizycie;forma_platnosci;koszt_preparatu;marza_szacunkowa;kosmetyki;voucher_sprzedany;voucher_wykorzystany'; return [header, ...visits.map(visit => { const client = getClient(visit.clientId); const service = getService(visit.serviceId); const totals = visitTotals(visit); return [visit.date, client.name, client.phone, service.name, totals.serviceValue, visit.deposit, totals.paidAtVisit, visit.paymentMethod, totals.productCost, totals.estimatedMargin, visit.cosmetics, visit.voucherSold, visit.voucherUsed].map(value => `"${String(value).replace(/"/g, '""')}"`).join(';'); })].join('\n'); }
 
-  function toast(message) {
-    const el = $('#toast');
-    el.textContent = message;
-    el.classList.add('show');
-    clearTimeout(toast.timer);
-    toast.timer = setTimeout(() => el.classList.remove('show'), 2600);
+  function openVisitModal() {
+    const form = $('#visitForm');
+    form.reset(); form.elements.date.value = toIso(today());
+    form.elements.clientId.innerHTML = state.clients.map(client => `<option value="${client.id}">${escapeHtml(client.name)}</option>`).join('');
+    form.elements.serviceId.innerHTML = SERVICE_RULES.map(service => `<option value="${service.id}">${escapeHtml(service.name)}</option>`).join('');
+    form.elements.productId.innerHTML = PRODUCTS.map(product => `<option value="${product.id}">${escapeHtml(product.name)}</option>`).join('');
+    form.elements.price.value = SERVICE_RULES[0].price; form.elements.consent.checked = true;
+    updateVisitCalculation(); showModal($('#visitModal'));
   }
-
-  async function copyText(text, notify = true) {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch (_) {
-      const area = document.createElement('textarea');
-      area.value = text; document.body.appendChild(area); area.select(); document.execCommand('copy'); area.remove();
-    }
-    if (notify) toast('Wiadomość skopiowana');
+  function updateVisitCalculation() {
+    const form = $('#visitForm'); const draft = { price: form.elements.price.value, discount: form.elements.discount.value, productId: form.elements.productId.value, productAmount: form.elements.productAmount.value, deposit: form.elements.deposit.value, cosmetics: form.elements.cosmetics.value, voucherSold: form.elements.voucherSold.value, voucherUsed: form.elements.voucherUsed.value }; const totals = visitTotals(draft);
+    $('#productUnit').textContent = getProduct(draft.productId).unit;
+    $('#calculationPreview').innerHTML = `<div><span>Wartość zabiegu</span><strong>${money.format(totals.serviceValue)}</strong></div><div><span>Koszt preparatu</span><strong>${money.format(totals.productCost)}</strong></div><div><span>Do zapłaty przy wizycie</span><strong>${money.format(totals.paidAtVisit)}</strong></div><div class="accent"><span>Marża szacunkowa</span><strong>${money.format(totals.estimatedMargin)}</strong></div><p>Zadatek jest częścią ceny. Realizacja vouchera może obniżyć wpłatę do 0 zł.</p>`;
   }
-
-  function download(filename, content, mime = 'text/csv;charset=utf-8') {
-    const blob = new Blob(['\ufeff', content], { type: mime });
-    const url = URL.createObjectURL(blob);
-    const link = Object.assign(document.createElement('a'), { href: url, download: filename });
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
-
-  function parseCsv(text) {
-    const lines = text.trim().split(/\r?\n/).filter(Boolean);
-    if (lines.length < 2) throw new Error('Plik nie zawiera żadnych danych.');
-    const delimiter = (lines[0].match(/;/g) || []).length >= (lines[0].match(/,/g) || []).length ? ';' : ',';
-    const split = line => {
-      const values = []; let value = ''; let quoted = false;
-      for (let i = 0; i < line.length; i++) {
-        const char = line[i];
-        if (char === '"' && line[i + 1] === '"' && quoted) { value += '"'; i++; }
-        else if (char === '"') quoted = !quoted;
-        else if (char === delimiter && !quoted) { values.push(value.trim()); value = ''; }
-        else value += char;
-      }
-      values.push(value.trim()); return values;
-    };
-    const headers = split(lines[0]).map(h => h.toLowerCase().trim().replace(/\s+/g, '_'));
-    const required = ['imie', 'telefon', 'usluga', 'ostatnia_wizyta'];
-    if (!required.every(h => headers.includes(h))) throw new Error(`Brakuje kolumn: ${required.filter(h => !headers.includes(h)).join(', ')}`);
-    return lines.slice(1).map((line, index) => {
-      const values = split(line); const row = Object.fromEntries(headers.map((h, i) => [h, values[i] || '']));
-      const lastVisit = /^\d{4}-\d{2}-\d{2}$/.test(row.ostatnia_wizyta) ? row.ostatnia_wizyta : iso(new Date(row.ostatnia_wizyta));
-      if (!lastVisit || lastVisit === 'NaN-NaN-NaN') throw new Error(`Nieprawidłowa data w wierszu ${index + 2}. Użyj RRRR-MM-DD.`);
-      return { id: `i${Date.now()}-${index}`, name: row.imie, phone: row.telefon, service: row.usluga, lastVisit, repeatDays: Number(row.cykl_dni || 28), price: Number(row.cena || 0), consent: /^(tak|true|1|yes)$/i.test(row.zgoda || '') };
-    });
-  }
+  function showModal(modal) { modal.classList.add('open'); modal.setAttribute('aria-hidden', 'false'); }
+  function closeModal(modal) { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); }
 
   function wireEvents() {
-    $$('.nav-item').forEach(button => button.addEventListener('click', () => {
-      $$('.nav-item').forEach(b => b.classList.toggle('active', b === button));
-      $$('.view').forEach(v => v.classList.toggle('active', v.id === `view-${button.dataset.view}`));
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }));
-    $$('.segmented button').forEach(button => button.addEventListener('click', () => {
-      range = Number(button.dataset.range);
-      $$('.segmented button').forEach(b => b.classList.toggle('active', b === button));
-      renderSummary(); renderOpportunities(); renderDraft();
-    }));
+    $$('.nav-item').forEach(button => button.onclick = () => switchView(button.dataset.view));
+    $$('.segmented button').forEach(button => button.onclick = () => { slotRange = Number(button.dataset.range); $$('.segmented button').forEach(item => item.classList.toggle('active', item === button)); renderSlots(); });
+    $$('.open-visit').forEach(button => button.onclick = openVisitModal);
+    $('#visitSearch').oninput = renderVisits; $('#clientSearch').oninput = renderClients; $('#clientFilter').onchange = renderClients;
+    $$('.reminder-tabs button').forEach(button => button.onclick = () => { reminderFilter = button.dataset.reminderFilter; $$('.reminder-tabs button').forEach(item => item.classList.toggle('active', item === button)); renderReminders(); });
 
-    const modal = $('#importModal');
-    const showImportStep = name => {
-      $$('.import-step', modal).forEach(step => step.classList.toggle('active', step.dataset.importStep === name));
-      modal.scrollTop = 0;
-    };
-    const openModal = () => {
-      showImportStep('start');
-      $('#importStatus').textContent = '';
-      $('#importStatus').classList.remove('warning');
-      modal.classList.add('open');
-      modal.setAttribute('aria-hidden', 'false');
-    };
-    const closeModal = () => { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); };
-    ['#importButton', '#openImport', '#clientsImport'].forEach(selector => $(selector).addEventListener('click', openModal));
-    $('.modal-close').addEventListener('click', closeModal);
-    $$('.close-import', modal).forEach(button => button.addEventListener('click', closeModal));
-    $('#haveBooksyFiles').addEventListener('click', () => showImportStep('files'));
-    $('#needBooksyHelp').addEventListener('click', () => showImportStep('help'));
-    $('#continueToFiles').addEventListener('click', () => showImportStep('files'));
-    $('#previewImportSuccess').addEventListener('click', () => {
-      $('#foundClients').textContent = state.clients.length;
-      $('#foundServices').textContent = new Set(state.clients.map(client => client.service)).size;
-      $('#foundReady').textContent = state.clients.filter(client => client.consent && clientReadiness(client).until <= 7).length;
-      showImportStep('success');
-    });
-    $$('.step-back', modal).forEach(button => button.addEventListener('click', () => showImportStep(button.dataset.backTo)));
-    $('#copyBooksyRequest').addEventListener('click', () => copyText($('#booksyRequest').textContent));
-    modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-    $('#csvFile').addEventListener('change', async e => {
-      const files = [...e.target.files]; if (!files.length) return;
-      const file = files.find(item => item.name.toLowerCase().endsWith('.csv'));
-      if (!file) {
-        $('#importStatus').classList.add('warning');
-        $('#importStatus').innerHTML = '<strong>Pliki zostały wybrane.</strong><br>Ten rodzaj eksportu wymaga jednorazowego dopasowania w pilotażu. Niczego w nim nie zmieniaj — przygotujemy pierwszy import wspólnie.';
-        e.target.value = '';
-        return;
-      }
-      try {
-        const clients = parseCsv(await file.text());
-        state.clients = clients;
-        state.queue = [];
-        saveState(); render();
-        const services = new Set(clients.map(client => client.service)).size;
-        const ready = clients.filter(client => client.consent && clientReadiness(client).until <= 7).length;
-        $('#foundClients').textContent = clients.length;
-        $('#foundServices').textContent = services;
-        $('#foundReady').textContent = ready;
-        showImportStep('success');
-        toast('Dane z Booksy są gotowe');
-      } catch (error) {
-        $('#importStatus').classList.add('warning');
-        $('#importStatus').innerHTML = '<strong>Nie udało się jeszcze odczytać tego pliku.</strong><br>Nie musisz niczego poprawiać. W pierwszym pilotażu dopasujemy eksport do Twojego konta Booksy.';
-      }
-      e.target.value = '';
-    });
+    const visitForm = $('#visitForm');
+    visitForm.elements.serviceId.onchange = event => { visitForm.elements.price.value = getService(event.target.value).price; updateVisitCalculation(); };
+    ['price', 'discount', 'productId', 'productAmount', 'deposit', 'cosmetics', 'voucherSold', 'voucherUsed'].forEach(name => visitForm.elements[name].addEventListener('input', updateVisitCalculation));
+    visitForm.onsubmit = event => { event.preventDefault(); const data = new FormData(visitForm); const visit = { id: `v-${Date.now()}`, clientId: data.get('clientId'), serviceId: data.get('serviceId'), date: data.get('date'), price: num(data.get('price')), discount: num(data.get('discount')), productId: data.get('productId'), productAmount: num(data.get('productAmount')), deposit: num(data.get('deposit')), cosmetics: num(data.get('cosmetics')), voucherSold: num(data.get('voucherSold')), voucherUsed: num(data.get('voucherUsed')), paymentMethod: data.get('paymentMethod') }; const client = getClient(visit.clientId); client.consent = visitForm.elements.consent.checked; state.visits.push(visit); state.reminders.push(...remindersForVisit(visit)); saveState(); closeModal($('#visitModal')); render(); switchView('visits'); toast('Wizyta zapisana, przypomnienia zaplanowane'); };
 
-    $('#clientSearch').addEventListener('input', renderClients);
-    $('#clientFilter').addEventListener('change', renderClients);
-    $('#settingsForm').addEventListener('submit', e => {
-      e.preventDefault(); const data = new FormData(e.target);
-      state.settings = { salonName: data.get('salonName').trim() || 'Mój salon', ownerName: data.get('ownerName').trim() || 'Właścicielko', tone: data.get('tone'), discount: Number(data.get('discount') || 0), consentOnly: e.target.elements.consentOnly.checked };
-      saveState(); render(); toast('Ustawienia zapisane');
-    });
-    $('#resetDemo').addEventListener('click', () => {
-      if (!confirm('Przywrócić dane demonstracyjne? Obecne dane w aplikacji zostaną zastąpione.')) return;
-      state = demoState(); selectedSlotId = state.slots[0].id; saveState(); render(); toast('Przywrócono dane demonstracyjne');
-    });
-    $('#exportBackup').addEventListener('click', () => download(`pusty-grafik-kopia-${iso(new Date())}.json`, JSON.stringify(state, null, 2), 'application/json'));
-    $('#exportResults').addEventListener('click', () => {
-      const header = 'data;klientka;usluga;wartosc;status';
-      const rows = state.history.map(h => {
-        const c = state.clients.find(x => x.id === h.clientId);
-        return [h.date, c?.name || '', h.service, h.value, h.status].map(v => `"${String(v).replace(/"/g, '""')}"`).join(';');
-      });
-      download(`raport-pusty-grafik-${iso(new Date())}.csv`, [header, ...rows].join('\n'));
-    });
+    $$('.modal-close').forEach(button => button.onclick = () => closeModal(button.closest('.modal-backdrop')));
+    $$('.modal-backdrop').forEach(modal => modal.onclick = event => { if (event.target === modal) closeModal(modal); });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape') $$('.modal-backdrop.open').forEach(closeModal); });
+
+    const importModal = $('#importModal'); const showImportStep = name => $$('.import-step', importModal).forEach(step => step.classList.toggle('active', step.dataset.importStep === name));
+    $$('.open-import').forEach(button => button.onclick = () => { showImportStep('start'); $('#importStatus').innerHTML = ''; showModal(importModal); });
+    $$('.close-import').forEach(button => button.onclick = () => closeModal(importModal));
+    $('#haveBooksyFiles').onclick = () => showImportStep('files'); $('#needBooksyHelp').onclick = () => showImportStep('help'); $('#continueToFiles').onclick = () => showImportStep('files');
+    $$('.step-back').forEach(button => button.onclick = () => showImportStep(button.dataset.backTo)); $('#copyBooksyRequest').onclick = () => copyText($('#booksyRequest').textContent);
+    $('#booksyFiles').onchange = event => { if (!event.target.files.length) return; $('#importStatus').innerHTML = '<strong>Pliki zostały wybrane.</strong><br>W publicznej demonstracji nie przetwarzamy prawdziwych danych. Pierwszy eksport zostanie bezpiecznie dopasowany podczas prywatnego pilotażu.'; $('#importStatus').classList.add('warning'); event.target.value = ''; };
+
+    $('#settingsForm').onsubmit = event => { event.preventDefault(); const data = new FormData(event.target); state.settings = { ...state.settings, salonName: data.get('salonName').trim() || 'Mój salon', ownerName: data.get('ownerName').trim() || 'Właścicielko', booksyLink: data.get('booksyLink').trim() || BOOKSY_LINK, tone: data.get('tone'), consentOnly: event.target.elements.consentOnly.checked }; saveState(); render(); toast('Ustawienia zapisane'); };
+    $('#exportBackup').onclick = () => download(`pusty-grafik-kopia-${toIso(today())}.json`, JSON.stringify(state, null, 2), 'application/json');
+    $('#exportVisits').onclick = () => download(`wizyty-${toIso(today())}.csv`, csvRows(state.visits)); $('#exportFinance').onclick = () => download(`finanse-${toIso(today())}.csv`, csvRows(monthVisits()));
+    $('#resetDemo').onclick = () => { if (!confirm('Przywrócić fikcyjne dane demonstracyjne?')) return; state = demoState(); selectedSlotId = state.slots[0]?.id; saveState(); render(); toast('Przywrócono demonstrację'); };
   }
 
-  wireEvents();
-  saveState();
-  render();
+  wireEvents(); saveState(); render();
 })();
